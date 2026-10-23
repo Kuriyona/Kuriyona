@@ -3,7 +3,8 @@
   "scripts": {
     "generate-readme": "node scripts/generate-readme.ts",
     "generate-intro": "node scripts/generate-intro.ts",
-    "upload-intro": "node --env-file-if-exists=.env scripts/upload-intro.ts"
+    "upload-intro": "node --env-file-if-exists=.env scripts/upload-intro.ts",
+    "generate-contributions": "node --env-file-if-exists=.env scripts/generate-contributions.ts"
   },
   "dependencies": {
     "@kuriyona/svg-toolkit": "1.0.0-rc.1",

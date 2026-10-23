@@ -2,19 +2,22 @@
 
 ## Project Overview
 
-Personal profile-card generator for Kuriyona. One script renders a 1280×320 "intro card" from a declarative layout, another uploads the result to Cloudflare R2 and purges the CDN cache for `r2.kuriyona.com`. There is no application, library entry point, or UI — only three TypeScript scripts run directly by Node.
+Personal profile-card generator for Kuriyona. One script renders a 1280×320 "intro card" from a declarative layout, another renders a 1280-wide contributions card (height follows its content) from GitHub data, and a third uploads the intro card to Cloudflare R2 and purges the CDN cache for `r2.kuriyona.com`. There is no application, library entry point, or UI — only standalone TypeScript scripts run directly by Node.
 
 ## Architecture & Data Flow
 
 ```
 scripts/generate-intro.ts   LayoutDefinition → compileLayout → renderSVG → renderPNG
                             → .cache/intro.svg + .cache/intro.png
+scripts/generate-contributions.ts
+                            GitHub GraphQL + REST → .cache/contributions.{svg,png}
+
 scripts/upload-intro.ts     reads .cache/intro.{svg,png}
                             → uploadObject()  SigV4 PUT to R2 S3 API (aws4fetch)
                             → purgeCache()    Cloudflare REST API (cloudflare SDK)
 ```
 
-Both scripts are standalone top-level-await programs that exit non-zero on failure; they share only `scripts/utils.ts`, which owns all network access.
+All scripts are standalone top-level-await programs that exit non-zero on failure. `scripts/utils.ts` owns R2/Cloudflare access, `scripts/github.ts` owns GitHub access (token from `GITHUB_API_TOKEN` / `GITHUB_TOKEN`) and caches every response body under `.cache/github`; `--refresh` forces refetch. The contributions card reads each section's own normalized shares and anchors its bar geometry on the compiled section-title elements, since the layout engine cannot draw bars.
 
 The layout is a yoga flexbox tree described as plain JSON (`LayoutDefinition`). Design constraints that the code depends on:
 
@@ -36,6 +39,7 @@ There is no `src/`, `tests/`, or build output directory.
 
 ```bash
 pnpm generate-intro          # render .cache/intro.svg + .cache/intro.png
+pnpm generate-contributions  # render .cache/contributions.{svg,png} from GitHub
 pnpm upload-intro            # upload both, then purge the two public URLs
 pnpm exec tsc --noEmit       # the only static check
 node scripts/generate-intro.ts   # scripts run directly; no build step
@@ -43,7 +47,7 @@ node scripts/generate-intro.ts   # scripts run directly; no build step
 
 `generate-readme` is wired to `scripts/generate-readme.ts`, which is currently zero bytes — running it silently does nothing.
 
-`.env` is only loaded by `upload-intro` (`node --env-file-if-exists=.env`); `generate-intro` needs no environment.
+`.env` is loaded by `upload-intro` and `generate-contributions` (`node --env-file-if-exists=.env`); `generate-intro` needs no environment.
 
 ## Code Conventions & Common Patterns
 
@@ -71,7 +75,7 @@ node scripts/generate-intro.ts   # scripts run directly; no build step
 
 - **Node 24**, native TypeScript type stripping — no `tsx`, `ts-node`, or bundler. Keep syntax erasable: no enums, parameter properties, or namespaces (`erasableSyntaxOnly` enforces this).
 - **ESM everywhere** (`"type": "module"` in `package.json`); top-level await is available.
-- **pnpm** (lockfile v9 committed). `.env` supplies `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `S3_ENDPOINT`, `BUCKET_NAME`, `CF_API_TOKEN`; `ACCOUNT_ID` is present but unused.
+- **pnpm** (lockfile v9 committed). `.env` supplies `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `S3_ENDPOINT`, `BUCKET_NAME`, `CF_API_TOKEN`, and `GITHUB_API_TOKEN` (classic PAT, `read:user` only — no repo scope); `ACCOUNT_ID` is present but unused.
 - **Credentials are split by API**: the R2 API token works only against the S3 endpoint (`https://<ACCOUNT_ID>.r2.cloudflarestorage.com`), so uploads use SigV4 via `aws4fetch`. Cache purge is a REST call and needs a separate Cloudflare API token with `Zone → Cache Purge`; an R2 "Object Read & Write" token is rejected there (401).
 - Unused dependency worth remembering: `ky` is declared but imported nowhere.
 - Bun is intentionally not used; do not reintroduce `Bun.*` APIs, `bun` script runners, or `@types/bun`.
