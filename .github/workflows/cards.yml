@@ -39,7 +39,8 @@ jobs:
         env:
           # A classic PAT with `read:user`: the GITHUB_TOKEN installation token
           # cannot read viewer.contributionsCollection.
-          GITHUB_API_TOKEN: ${{ secrets.GITHUB_API_TOKEN }}
+          # Secret names may not start with GITHUB_, so the PAT is stored as GH_PAT.
+          GITHUB_API_TOKEN: ${{ secrets.GH_PAT }}
 
       - run: pnpm upload
         env:
