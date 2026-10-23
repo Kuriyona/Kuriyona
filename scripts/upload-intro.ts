@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 const filename = import.meta.filename as string;
 const dirname = path.dirname(filename);
-import { purgeCache, s3 } from './utils';
+import { purgeCache, uploadObject } from './utils.ts';
 
 // Public access: https://r2.kuriyona.com/img/readme/intro.{svg,png}
 const PUBLIC_BASE = 'https://r2.kuriyona.com';
@@ -20,7 +20,7 @@ for (const { name, contentType } of files) {
   const data = await fs.readFile(path.join(SOURCE_DIR, name));
   // Explicit content type: the bucket default is application/octet-stream,
   // which makes browsers download the card instead of rendering it.
-  await s3.file(key).write(data, { type: contentType });
+  await uploadObject(key, data, contentType);
   urls.push(`${PUBLIC_BASE}/${key}`);
   console.log(`Uploaded ${name} -> ${urls.at(-1)}`);
 }

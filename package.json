@@ -1,14 +1,19 @@
 {
+  "type": "module",
   "scripts": {
-    "generate-readme": "bun scripts/generate-readme.ts",
-    "generate-intro": "bun scripts/generate-intro.ts",
-    "upload-intro": "bun scripts/upload-intro.ts"
+    "generate-readme": "node scripts/generate-readme.ts",
+    "generate-intro": "node scripts/generate-intro.ts",
+    "upload-intro": "node --env-file-if-exists=.env scripts/upload-intro.ts"
   },
   "dependencies": {
     "@kuriyona/svg-toolkit": "1.0.0-rc.1",
     "@resvg/resvg-js": "^2.6.2",
-    "@types/bun": "^1.4.3",
+    "aws4fetch": "^1.0.20",
     "cloudflare": "^6.5.0",
     "ky": "^2.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
   }
 }
