@@ -1,0 +1,48 @@
+name: Cards
+
+on:
+  schedule:
+    # 00:00 UTC. GitHub may start scheduled runs a few minutes late.
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cards
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # The Maple Mono release is downloaded into .cache/fonts on first render.
+      - run: pnpm generate-intro
+
+      - run: pnpm generate-contributions
+        env:
+          # A classic PAT with `read:user`: the GITHUB_TOKEN installation token
+          # cannot read viewer.contributionsCollection.
+          GITHUB_API_TOKEN: ${{ secrets.GITHUB_API_TOKEN }}
+
+      - run: pnpm upload
+        env:
+          ACCESS_KEY_ID: ${{ secrets.ACCESS_KEY_ID }}
+          SECRET_ACCESS_KEY: ${{ secrets.SECRET_ACCESS_KEY }}
+          S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
+          BUCKET_NAME: ${{ secrets.BUCKET_NAME }}
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}

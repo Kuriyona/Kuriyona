@@ -4,6 +4,7 @@ const filename = import.meta.filename as string;
 const dirname = path.dirname(filename);
 import { compileLayout, renderSVG, renderPNG } from '@kuriyona/svg-toolkit';
 import type { LayoutDefinition, LayoutNode, OutputDocument, OutputRect } from '@kuriyona/svg-toolkit';
+import { loadFont } from './font.ts';
 import { graphql, rest } from './github.ts';
 
 const WIDTH = 1280;
@@ -16,7 +17,6 @@ const ColorMuted = '#5c5c5c';
 const ColorPrimary = '#b366ff';
 const ColorOther = '#c9c9c9';
 
-const FONT_FAMILY = 'Maple Mono';
 // svg-toolkit does not measure text; Maple Mono advances 0.6em per glyph.
 const CHAR_WIDTH = 0.6;
 const textWidth = (content: string, fontSize: number) => content.length * fontSize * CHAR_WIDTH;
@@ -47,7 +47,7 @@ const SECTION_GAP = 56;
 const TOP_N = 5;
 const TIMEZONE_OFFSET_HOURS = 8;
 
-const font = { loadSystemFonts: true, defaultFontFamily: FONT_FAMILY };
+const font = await loadFont();
 
 type RepoCount = { repository: { nameWithOwner: string }; contributions: { totalCount: number } };
 type Viewer = {

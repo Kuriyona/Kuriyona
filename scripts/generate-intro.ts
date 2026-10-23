@@ -4,6 +4,7 @@ const filename = import.meta.filename as string;
 const dirname = path.dirname(filename);
 import { compileLayout, renderSVG, renderPNG } from '@kuriyona/svg-toolkit';
 import type { LayoutDefinition } from '@kuriyona/svg-toolkit';
+import { loadFont } from './font.ts';
 
 const WIDTH = 1280;
 const HEIGHT = 320;
@@ -11,8 +12,6 @@ const PADDING = 48;
 const ColorBG = '#f0f0f0';
 const ColorText = '#000000';
 const ColorPrimary = '#b366ff';
-
-const FONT_FAMILY = 'Maple Mono';
 
 // svg-toolkit does not measure text: a text node collapses to zero width unless
 // given an explicit one. Maple Mono advances 0.6em per glyph, so a row's width is
@@ -32,7 +31,7 @@ const FOOTER_LABEL = 'Read more on';
 const FOOTER_LINK = 'https://Kuriyona.com -->';
 const FOOTER_FONT_SIZE = 20;
 
-const font = { loadSystemFonts: true, defaultFontFamily: FONT_FAMILY };
+const font = await loadFont();
 
 const layout: LayoutDefinition = {
   width: WIDTH,

@@ -17,6 +17,7 @@ scripts/upload.ts           reads .cache/{intro,contributions}.{svg,png}
                             → purgeCache()    Cloudflare REST API (cloudflare SDK)
 
 scripts/generate-readme.ts  publicUrl() → README.md (both cards, PNG)
+scripts/font.ts             downloads + verifies Maple Mono TTF → .cache/fonts
 ```
 
 All scripts are standalone top-level-await programs that exit non-zero on failure. `scripts/utils.ts` owns R2/Cloudflare access, `scripts/github.ts` owns GitHub access (token from `GITHUB_API_TOKEN` / `GITHUB_TOKEN`) and caches every response body under `.cache/github`; `--refresh` forces refetch. The contributions card reads each section's own normalized shares and anchors its bar geometry on the compiled section-title elements, since the layout engine cannot draw bars.
@@ -26,14 +27,15 @@ The layout is a yoga flexbox tree described as plain JSON (`LayoutDefinition`). 
 - **Text is not measured.** `compileLayout` gives text nodes zero size unless `width`/`height` are set explicitly, so every text node in `generate-intro.ts` computes its width as `content.length * fontSize * CHAR_WIDTH` with `CHAR_WIDTH = 0.6` (Maple Mono's advance in em). Any new text node needs the same treatment or it collapses and overlaps its neighbour.
 - **Text is drawn with `dominant-baseline="hanging"`**, so a node's `y` is the top of its box; vertical rhythm comes from explicit heights (`1.2em` line box by default here).
 - **`renderSVG` hardcodes `text { font-weight: bold }`** in an embedded `<style>`. Per-node weights are impossible without post-processing the SVG.
-- Fonts are resolved by the rasterizer: `font.defaultFontFamily = 'Maple Mono'` relies on `loadSystemFonts` finding the host-installed family; `renderPNG` receives the same font config.
+- Fonts are resolved by the rasterizer from `.cache/fonts`: `font.ts` downloads the pinned Maple Mono release (checksum-verified) and passes the Regular/Bold TTFs as `fontFiles` with `loadSystemFonts: false`, so host fonts never leak into a render and CI matches local output.
+- The daily `.github/workflows/cards.yml` run renders both cards and uploads them; it needs the `GITHUB_API_TOKEN`, `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `S3_ENDPOINT`, `BUCKET_NAME` and `CF_API_TOKEN` repo secrets.
 
 ## Key Directories
 
 | Path     | Contents                                                                       |
 | -------- | ------------------------------------------------------------------------------ |
-| `scripts/` | All code: `generate-intro.ts`, `generate-contributions.ts`, `generate-readme.ts`, `upload.ts`, `github.ts`, `cdn.ts`, `utils.ts` |
-| `.cache/` | Gitignored output (`intro.{svg,png}`, `contributions.{svg,png}`, GitHub cache in `github/`); upload reads from here |
+| `scripts/` | All code: `generate-intro.ts`, `generate-contributions.ts`, `generate-readme.ts`, `upload.ts`, `github.ts`, `cdn.ts`, `font.ts`, `utils.ts` |
+| `.cache/` | Gitignored output (`intro.{svg,png}`, `contributions.{svg,png}`, GitHub cache in `github/`, downloaded fonts in `fonts/`); upload reads from here |
 
 There is no `src/`, `tests/`, or build output directory.
 
@@ -86,7 +88,7 @@ node scripts/generate-intro.ts   # scripts run directly; no build step
 
 ## Testing & QA
 
-No test framework, no test files, no CI. Verification is:
+No test framework, no test files. CI is `.github/workflows/cards.yml`, which only renders and uploads — it runs no checks. Verification is:
 
 1. `pnpm exec tsc --noEmit` for types.
 2. `pnpm generate-intro`, then inspect `.cache/intro.svg` / `.png` — layout regressions show up as overlapping text or wrong x/width on `<text>` elements.
