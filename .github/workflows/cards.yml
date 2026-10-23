@@ -21,7 +21,9 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          # Matches the local toolchain; pnpm 9 rejects a workspace file that
+          # only carries `minimumReleaseAgeExclude`.
+          version: 12
 
       - uses: actions/setup-node@v4
         with:
