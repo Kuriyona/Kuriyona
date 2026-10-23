@@ -15,6 +15,8 @@ scripts/generate-contributions.ts
 scripts/upload.ts           reads .cache/{intro,contributions}.{svg,png}
                             → uploadObject()  SigV4 PUT to R2 S3 API (aws4fetch)
                             → purgeCache()    Cloudflare REST API (cloudflare SDK)
+
+scripts/generate-readme.ts  publicUrl() → README.md (both cards, PNG)
 ```
 
 All scripts are standalone top-level-await programs that exit non-zero on failure. `scripts/utils.ts` owns R2/Cloudflare access, `scripts/github.ts` owns GitHub access (token from `GITHUB_API_TOKEN` / `GITHUB_TOKEN`) and caches every response body under `.cache/github`; `--refresh` forces refetch. The contributions card reads each section's own normalized shares and anchors its bar geometry on the compiled section-title elements, since the layout engine cannot draw bars.
@@ -30,7 +32,7 @@ The layout is a yoga flexbox tree described as plain JSON (`LayoutDefinition`). 
 
 | Path     | Contents                                                                       |
 | -------- | ------------------------------------------------------------------------------ |
-| `scripts/` | All code: `generate-intro.ts`, `generate-contributions.ts`, `upload.ts`, `github.ts`, `utils.ts`, `generate-readme.ts` (empty placeholder) |
+| `scripts/` | All code: `generate-intro.ts`, `generate-contributions.ts`, `generate-readme.ts`, `upload.ts`, `github.ts`, `cdn.ts`, `utils.ts` |
 | `.cache/` | Gitignored output (`intro.{svg,png}`, `contributions.{svg,png}`, GitHub cache in `github/`); upload reads from here |
 
 There is no `src/`, `tests/`, or build output directory.
@@ -45,7 +47,7 @@ pnpm exec tsc --noEmit       # the only static check
 node scripts/generate-intro.ts   # scripts run directly; no build step
 ```
 
-`generate-readme` is wired to `scripts/generate-readme.ts`, which is currently zero bytes — running it silently does nothing.
+`generate-readme` writes `README.md` at the repo root: both cards as PNGs from `r2.kuriyona.com`, the intro wrapped in a link to `Kuriyona.com`.
 
 `.env` is loaded by `upload` and `generate-contributions` (`node --env-file-if-exists=.env`); `generate-intro` needs no environment.
 
@@ -64,7 +66,9 @@ node scripts/generate-intro.ts   # scripts run directly; no build step
 | File                        | Role                                                                 |
 | --------------------------- | -------------------------------------------------------------------- |
 | `scripts/generate-intro.ts` | Card content, colors, geometry; the only place design values live    |
-| `scripts/upload.ts`         | Publish set (`FILES`), extension→content-type map, object keys, purge |
+| `scripts/upload.ts`         | Publish set (`FILES`), extension→content-type map, purge              |
+| `scripts/cdn.ts`            | Public URL contract (`PUBLIC_BASE`, `KEY_PREFIX`, `publicUrl`) shared by upload and README |
+| `scripts/generate-readme.ts`| Writes `README.md` embedding the published PNGs                        |
 | `scripts/utils.ts`          | `uploadObject` (S3 SigV4) and `purgeCache` (zone id hardcoded here)   |
 | `package.json`              | `"type": "module"`, npm scripts, deps                                |
 | `tsconfig.json`             | `nodenext` + `strict` + `erasableSyntaxOnly` + `allowImportingTsExtensions` |

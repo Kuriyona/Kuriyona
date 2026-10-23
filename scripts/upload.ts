@@ -2,11 +2,9 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 const filename = import.meta.filename as string;
 const dirname = path.dirname(filename);
+import { KEY_PREFIX, PUBLIC_BASE } from './cdn.ts';
 import { purgeCache, uploadObject } from './utils.ts';
 
-// Public access: https://r2.kuriyona.com/img/readme/<name>
-const PUBLIC_BASE = 'https://r2.kuriyona.com';
-const KEY_PREFIX = 'img/readme';
 const SOURCE_DIR = path.join(dirname, '..', '.cache');
 
 // Producers write into .cache; this list is the whole publish set.
