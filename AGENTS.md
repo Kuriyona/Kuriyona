@@ -1,0 +1,87 @@
+# Repository Guidelines
+
+## Project Overview
+
+Personal profile-card generator for Kuriyona. One script renders a 1280×320 "intro card" from a declarative layout, another uploads the result to Cloudflare R2 and purges the CDN cache for `r2.kuriyona.com`. There is no application, library entry point, or UI — only three TypeScript scripts run directly by Node.
+
+## Architecture & Data Flow
+
+```
+scripts/generate-intro.ts   LayoutDefinition → compileLayout → renderSVG → renderPNG
+                            → .cache/intro.svg + .cache/intro.png
+scripts/upload-intro.ts     reads .cache/intro.{svg,png}
+                            → uploadObject()  SigV4 PUT to R2 S3 API (aws4fetch)
+                            → purgeCache()    Cloudflare REST API (cloudflare SDK)
+```
+
+Both scripts are standalone top-level-await programs that exit non-zero on failure; they share only `scripts/utils.ts`, which owns all network access.
+
+The layout is a yoga flexbox tree described as plain JSON (`LayoutDefinition`). Design constraints that the code depends on:
+
+- **Text is not measured.** `compileLayout` gives text nodes zero size unless `width`/`height` are set explicitly, so every text node in `generate-intro.ts` computes its width as `content.length * fontSize * CHAR_WIDTH` with `CHAR_WIDTH = 0.6` (Maple Mono's advance in em). Any new text node needs the same treatment or it collapses and overlaps its neighbour.
+- **Text is drawn with `dominant-baseline="hanging"`**, so a node's `y` is the top of its box; vertical rhythm comes from explicit heights (`1.2em` line box by default here).
+- **`renderSVG` hardcodes `text { font-weight: bold }`** in an embedded `<style>`. Per-node weights are impossible without post-processing the SVG.
+- Fonts are resolved by the rasterizer: `font.defaultFontFamily = 'Maple Mono'` relies on `loadSystemFonts` finding the host-installed family; `renderPNG` receives the same font config.
+
+## Key Directories
+
+| Path     | Contents                                                                       |
+| -------- | ------------------------------------------------------------------------------ |
+| `scripts/` | All code: `generate-intro.ts`, `upload-intro.ts`, `utils.ts`, `generate-readme.ts` (empty placeholder) |
+| `.cache/` | Gitignored output (`intro.svg`, `intro.png`); upload reads from here            |
+
+There is no `src/`, `tests/`, or build output directory.
+
+## Development Commands
+
+```bash
+pnpm generate-intro          # render .cache/intro.svg + .cache/intro.png
+pnpm upload-intro            # upload both, then purge the two public URLs
+pnpm exec tsc --noEmit       # the only static check
+node scripts/generate-intro.ts   # scripts run directly; no build step
+```
+
+`generate-readme` is wired to `scripts/generate-readme.ts`, which is currently zero bytes — running it silently does nothing.
+
+`.env` is only loaded by `upload-intro` (`node --env-file-if-exists=.env`); `generate-intro` needs no environment.
+
+## Code Conventions & Common Patterns
+
+- **Formatting** (target style, from `.oxfmtrc.json`): 2-space indent, single quotes, semicolons, `bracketSameLine`. Note `oxfmt` is *not* installed, so nothing enforces this — match existing files by hand.
+- **Imports**: Node builtins first, then the `path`/`dirname` preamble, then package imports, then relative imports. Use `import type` for types. **Relative imports must carry the `.ts` extension** (`import { purgeCache, uploadObject } from './utils.ts'`) because Node ESM does no extension resolution.
+- **Path derivation**: every script starts with `import.meta.filename` → `path.dirname` and builds outputs relative to itself, never to `process.cwd()`.
+- **Naming**: module constants are `SCREAMING_SNAKE`; layout/color constants use a `Color*` prefix (`ColorBG`, `ColorPrimary`); functions are `camelCase`; files are `kebab-case`.
+- **Async**: top-level `await` in scripts; shared helpers are small exported `async` functions in `utils.ts`. No classes, no DI container, no state beyond module constants.
+- **Errors**: no defensive `try/catch`. `uploadObject` throws with the HTTP status and response body; everything else lets Node print the stack and exit non-zero.
+- Avoid one-expression helper functions — compute inline (e.g. widths are computed at the call site).
+
+## Important Files
+
+| File                        | Role                                                                 |
+| --------------------------- | -------------------------------------------------------------------- |
+| `scripts/generate-intro.ts` | Card content, colors, geometry; the only place design values live    |
+| `scripts/upload-intro.ts`   | Object keys (`img/readme/intro.{svg,png}`), public URLs, purge call   |
+| `scripts/utils.ts`          | `uploadObject` (S3 SigV4) and `purgeCache` (zone id hardcoded here)   |
+| `package.json`              | `"type": "module"`, npm scripts, deps                                |
+| `tsconfig.json`             | `nodenext` + `strict` + `erasableSyntaxOnly` + `allowImportingTsExtensions` |
+| `.gitignore`                | `node_modules`, `.cache`, `.env`                                     |
+| `LICENSE`                   | WTFPL v2                                                             |
+
+## Runtime/Tooling Preferences
+
+- **Node 24**, native TypeScript type stripping — no `tsx`, `ts-node`, or bundler. Keep syntax erasable: no enums, parameter properties, or namespaces (`erasableSyntaxOnly` enforces this).
+- **ESM everywhere** (`"type": "module"` in `package.json`); top-level await is available.
+- **pnpm** (lockfile v9 committed). `.env` supplies `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `S3_ENDPOINT`, `BUCKET_NAME`, `CF_API_TOKEN`; `ACCOUNT_ID` is present but unused.
+- **Credentials are split by API**: the R2 API token works only against the S3 endpoint (`https://<ACCOUNT_ID>.r2.cloudflarestorage.com`), so uploads use SigV4 via `aws4fetch`. Cache purge is a REST call and needs a separate Cloudflare API token with `Zone → Cache Purge`; an R2 "Object Read & Write" token is rejected there (401).
+- Unused dependency worth remembering: `ky` is declared but imported nowhere.
+- Bun is intentionally not used; do not reintroduce `Bun.*` APIs, `bun` script runners, or `@types/bun`.
+
+## Testing & QA
+
+No test framework, no test files, no CI. Verification is:
+
+1. `pnpm exec tsc --noEmit` for types.
+2. `pnpm generate-intro`, then inspect `.cache/intro.svg` / `.png` — layout regressions show up as overlapping text or wrong x/width on `<text>` elements.
+3. For uploads, confirm the public URL headers rather than trusting the exit code: `curl -sSI https://r2.kuriyona.com/img/readme/intro.svg` should return 200 with `Content-Type: image/svg+xml`.
+
+Because the layout engine never measures text, reasoning alone cannot validate a change — run the generator and look at the output.
