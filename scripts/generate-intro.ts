@@ -24,7 +24,7 @@ const TITLE_NAME = 'Kuriyona';
 const TITLE_FONT_SIZE = 96;
 const TITLE_HEIGHT = Math.round(TITLE_FONT_SIZE * 1.05);
 
-const SUBTITLE = 'An interest-driven developer';
+const SUBTITLE = 'An interest-driven developer · Student · Transgender';
 const SUBTITLE_FONT_SIZE = 32;
 
 const FOOTER_LABEL = 'Read more on';
