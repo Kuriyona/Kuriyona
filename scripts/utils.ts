@@ -1,8 +1,11 @@
 import { AwsClient } from 'aws4fetch';
 import Cloudflare from 'cloudflare';
 
-const endpoint = process.env.S3_ENDPOINT!;
-const bucket = process.env.BUCKET_NAME!;
+// The bucket is public and belongs to a single account, so its address is not
+// configuration. Credentials stay in the environment.
+const ACCOUNT_ID = '62d767af804659086b9dddbba84c88ba';
+const ENDPOINT = `https://${ACCOUNT_ID}.r2.cloudflarestorage.com`;
+const BUCKET = 'kuriyona-r2';
 
 // R2's S3 API is region-agnostic, so `auto` is enough; aws4fetch signs with the
 // account-scoped access key / secret from an R2 API token.
@@ -18,7 +21,7 @@ const client = new Cloudflare({
 });
 
 export const uploadObject = async (key: string, body: Uint8Array, contentType: string) => {
-  const response = await s3.fetch(`${endpoint}/${bucket}/${key}`, {
+  const response = await s3.fetch(`${ENDPOINT}/${BUCKET}/${key}`, {
     method: 'PUT',
     // Node's BodyInit rejects Uint8Array<ArrayBufferLike>; the bytes are a plain buffer.
     body: body as BodyInit,

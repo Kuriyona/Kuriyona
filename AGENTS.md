@@ -28,7 +28,7 @@ The layout is a yoga flexbox tree described as plain JSON (`LayoutDefinition`). 
 - **Text is drawn with `dominant-baseline="hanging"`**, so a node's `y` is the top of its box; vertical rhythm comes from explicit heights (`1.2em` line box by default here).
 - **`renderSVG` hardcodes `text { font-weight: bold }`** in an embedded `<style>`. Per-node weights are impossible without post-processing the SVG.
 - Fonts are resolved by the rasterizer from `.cache/fonts`: `font.ts` downloads the pinned Maple Mono release (checksum-verified) and passes the Regular/Bold TTFs as `fontFiles` with `loadSystemFonts: false`, so host fonts never leak into a render and CI matches local output.
-- The daily `.github/workflows/cards.yml` run renders both cards and uploads them; it needs the `GITHUB_API_TOKEN`, `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `S3_ENDPOINT`, `BUCKET_NAME` and `CF_API_TOKEN` repo secrets.
+- The daily `.github/workflows/cards.yml` run renders both cards and uploads them; it needs the `GITHUB_API_TOKEN`, `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY` and `CF_API_TOKEN` repo secrets.
 
 ## Key Directories
 
@@ -81,7 +81,7 @@ node scripts/generate-intro.ts   # scripts run directly; no build step
 
 - **Node 24**, native TypeScript type stripping — no `tsx`, `ts-node`, or bundler. Keep syntax erasable: no enums, parameter properties, or namespaces (`erasableSyntaxOnly` enforces this).
 - **ESM everywhere** (`"type": "module"` in `package.json`); top-level await is available.
-- **pnpm** (lockfile v9 committed). `.env` supplies `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `S3_ENDPOINT`, `BUCKET_NAME`, `CF_API_TOKEN`, and `GITHUB_API_TOKEN` (classic PAT, `read:user` only — no repo scope); `ACCOUNT_ID` is present but unused.
+- **pnpm** (lockfile v9 committed). `.env` supplies `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `CF_API_TOKEN`, and `GITHUB_API_TOKEN` (classic PAT, `read:user` only — no repo scope). The R2 account id, endpoint and bucket name are hardcoded in `scripts/utils.ts`.
 - **Credentials are split by API**: the R2 API token works only against the S3 endpoint (`https://<ACCOUNT_ID>.r2.cloudflarestorage.com`), so uploads use SigV4 via `aws4fetch`. Cache purge is a REST call and needs a separate Cloudflare API token with `Zone → Cache Purge`; an R2 "Object Read & Write" token is rejected there (401).
 - Unused dependency worth remembering: `ky` is declared but imported nowhere.
 - Bun is intentionally not used; do not reintroduce `Bun.*` APIs, `bun` script runners, or `@types/bun`.
