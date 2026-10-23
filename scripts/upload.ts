@@ -4,18 +4,25 @@ const filename = import.meta.filename as string;
 const dirname = path.dirname(filename);
 import { purgeCache, uploadObject } from './utils.ts';
 
-// Public access: https://r2.kuriyona.com/img/readme/intro.{svg,png}
+// Public access: https://r2.kuriyona.com/img/readme/<name>
 const PUBLIC_BASE = 'https://r2.kuriyona.com';
 const KEY_PREFIX = 'img/readme';
 const SOURCE_DIR = path.join(dirname, '..', '.cache');
 
-const files = [
-  { name: 'intro.svg', contentType: 'image/svg+xml' },
-  { name: 'intro.png', contentType: 'image/png' },
-];
+// Producers write into .cache; this list is the whole publish set.
+const FILES = ['intro.svg', 'intro.png', 'contributions.svg', 'contributions.png'];
+
+const CONTENT_TYPES: Record<string, string> = {
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+};
 
 const urls: string[] = [];
-for (const { name, contentType } of files) {
+for (const name of FILES) {
+  const contentType = CONTENT_TYPES[path.extname(name)];
+  if (!contentType) {
+    throw new Error(`No content type for ${name}`);
+  }
   const key = `${KEY_PREFIX}/${name}`;
   const data = await fs.readFile(path.join(SOURCE_DIR, name));
   // Explicit content type: the bucket default is application/octet-stream,

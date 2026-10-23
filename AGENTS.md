@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Personal profile-card generator for Kuriyona. One script renders a 1280×320 "intro card" from a declarative layout, another renders a 1280-wide contributions card (height follows its content) from GitHub data, and a third uploads the intro card to Cloudflare R2 and purges the CDN cache for `r2.kuriyona.com`. There is no application, library entry point, or UI — only standalone TypeScript scripts run directly by Node.
+Personal profile-card generator for Kuriyona. One script renders a 1280×320 "intro card" from a declarative layout, another renders a 1280-wide contributions card (height follows its content) from GitHub data, and a third uploads every generated card to Cloudflare R2 and purges the CDN cache for `r2.kuriyona.com`. There is no application, library entry point, or UI — only standalone TypeScript scripts run directly by Node.
 
 ## Architecture & Data Flow
 
@@ -12,7 +12,7 @@ scripts/generate-intro.ts   LayoutDefinition → compileLayout → renderSVG →
 scripts/generate-contributions.ts
                             GitHub GraphQL + REST → .cache/contributions.{svg,png}
 
-scripts/upload-intro.ts     reads .cache/intro.{svg,png}
+scripts/upload.ts           reads .cache/{intro,contributions}.{svg,png}
                             → uploadObject()  SigV4 PUT to R2 S3 API (aws4fetch)
                             → purgeCache()    Cloudflare REST API (cloudflare SDK)
 ```
@@ -30,8 +30,8 @@ The layout is a yoga flexbox tree described as plain JSON (`LayoutDefinition`). 
 
 | Path     | Contents                                                                       |
 | -------- | ------------------------------------------------------------------------------ |
-| `scripts/` | All code: `generate-intro.ts`, `upload-intro.ts`, `utils.ts`, `generate-readme.ts` (empty placeholder) |
-| `.cache/` | Gitignored output (`intro.svg`, `intro.png`); upload reads from here            |
+| `scripts/` | All code: `generate-intro.ts`, `generate-contributions.ts`, `upload.ts`, `github.ts`, `utils.ts`, `generate-readme.ts` (empty placeholder) |
+| `.cache/` | Gitignored output (`intro.{svg,png}`, `contributions.{svg,png}`, GitHub cache in `github/`); upload reads from here |
 
 There is no `src/`, `tests/`, or build output directory.
 
@@ -40,14 +40,14 @@ There is no `src/`, `tests/`, or build output directory.
 ```bash
 pnpm generate-intro          # render .cache/intro.svg + .cache/intro.png
 pnpm generate-contributions  # render .cache/contributions.{svg,png} from GitHub
-pnpm upload-intro            # upload both, then purge the two public URLs
+pnpm upload                   # upload every file in the publish set, then purge those URLs
 pnpm exec tsc --noEmit       # the only static check
 node scripts/generate-intro.ts   # scripts run directly; no build step
 ```
 
 `generate-readme` is wired to `scripts/generate-readme.ts`, which is currently zero bytes — running it silently does nothing.
 
-`.env` is loaded by `upload-intro` and `generate-contributions` (`node --env-file-if-exists=.env`); `generate-intro` needs no environment.
+`.env` is loaded by `upload` and `generate-contributions` (`node --env-file-if-exists=.env`); `generate-intro` needs no environment.
 
 ## Code Conventions & Common Patterns
 
@@ -64,7 +64,7 @@ node scripts/generate-intro.ts   # scripts run directly; no build step
 | File                        | Role                                                                 |
 | --------------------------- | -------------------------------------------------------------------- |
 | `scripts/generate-intro.ts` | Card content, colors, geometry; the only place design values live    |
-| `scripts/upload-intro.ts`   | Object keys (`img/readme/intro.{svg,png}`), public URLs, purge call   |
+| `scripts/upload.ts`         | Publish set (`FILES`), extension→content-type map, object keys, purge |
 | `scripts/utils.ts`          | `uploadObject` (S3 SigV4) and `purgeCache` (zone id hardcoded here)   |
 | `package.json`              | `"type": "module"`, npm scripts, deps                                |
 | `tsconfig.json`             | `nodenext` + `strict` + `erasableSyntaxOnly` + `allowImportingTsExtensions` |
