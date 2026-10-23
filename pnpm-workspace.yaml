@@ -1,0 +1,3 @@
+minimumReleaseAgeExclude:
+  - '@kuriyona/yona-svg@0.1.0'
+  - '@kuriyona/svg-toolkit@1.0.0-rc.1'

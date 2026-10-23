@@ -1,0 +1,14 @@
+{
+  "scripts": {
+    "generate-readme": "bun scripts/generate-readme.ts",
+    "generate-intro": "bun scripts/generate-intro.ts",
+    "upload-intro": "bun scripts/upload-intro.ts"
+  },
+  "dependencies": {
+    "@kuriyona/svg-toolkit": "1.0.0-rc.1",
+    "@resvg/resvg-js": "^2.6.2",
+    "@types/bun": "^1.4.3",
+    "cloudflare": "^6.5.0",
+    "ky": "^2.2.0"
+  }
+}
