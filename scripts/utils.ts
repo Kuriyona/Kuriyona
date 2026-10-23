@@ -9,7 +9,7 @@ export const s3 = new S3Client({
 });
 
 const client = new Cloudflare({
-  apiToken: process.env['CLOUDFLARE_API_TOKEN'],
+  apiToken: process.env.CF_API_TOKEN,
 });
 
 export const upload = async (file: Buffer | string, key: string) => {
