@@ -11,11 +11,11 @@ const WIDTH = 1280;
 const PADDING = 48;
 const INNER = WIDTH - PADDING * 2;
 
-const ColorBG = '#f0f0f0';
-const ColorText = '#000000';
-const ColorMuted = '#5c5c5c';
+const ColorBG = '#000000';
+const ColorText = '#ffffff';
+const ColorMuted = '#a3a3a3';
 const ColorPrimary = '#b366ff';
-const ColorOther = '#c9c9c9';
+const ColorOther = '#3a3a3a';
 
 // svg-toolkit does not measure text; Maple Mono advances 0.6em per glyph.
 const CHAR_WIDTH = 0.6;
@@ -139,9 +139,9 @@ const mix = (from: string, to: string, amount: number) => {
   const target = hex(to);
   return toHex(source.map((channel, index) => channel + (target[index] - channel) * amount));
 };
-// Series colors run from ColorPrimary to a pale tint, so the largest slice reads darkest.
+// Series colors run from ColorPrimary to a tint of the background, so the largest slice reads strongest.
 const seriesColor = (index: number, count: number) =>
-  mix(ColorPrimary, '#ffffff', count < 2 ? 0 : (index / (count - 1)) * 0.62);
+  mix(ColorPrimary, ColorBG, count < 2 ? 0 : (index / (count - 1)) * 0.62);
 
 const sharesToRows = (
   entries: { label: string; value: number }[],
@@ -445,7 +445,7 @@ for (const [index, count] of slotCounts.entries()) {
       timeY,
       BLOCK_WIDTH,
       BAR_HEIGHT,
-      mix(ColorPrimary, '#ffffff', 0.85 * (1 - intensity)),
+      mix(ColorPrimary, ColorBG, 0.85 * (1 - intensity)),
     ),
   );
 }
